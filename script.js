@@ -1,18 +1,17 @@
 
-// define the headline function at the top level //
+// Define the headline function at the top level
 function headline(listName) {
     const h1 = document.getElementById('headline');
-    h1.innerText = `${listName}`;
+    h1.innerText = listName;
     h1.contentEditable = true;
 
     h1.addEventListener('blur', function () {
-        const newListNane = h1.innerText.trim();
-        if (newListNane !== listName, newListNane !== '') {
-            renameList(listName, newListNane);
+        const newListName = h1.innerText.trim();
+        if (newListName !== listName && newListName !== '') {
+            renameList(listName, newListName);
         } else {
             h1.innerText = listName; // Revert to the original list name if the new name is empty
         }
-
     });
 
     h1.addEventListener('keydown', function (e) {
@@ -23,13 +22,10 @@ function headline(listName) {
     });
 }
 
-
 document.addEventListener('DOMContentLoaded', function () {
     const taskInput = document.getElementById('task');
 
-    document.getElementById('add').addEventListener('click', function () {
-        addTask();
-    });
+    document.getElementById('add').addEventListener('click', addTask);
 
     taskInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
@@ -44,17 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
         saveCurrentList();
     });
 
-    document.getElementById('save-list').addEventListener('click', function () {
-        saveCurrentList();
-    });
+    document.getElementById('save-list').addEventListener('click', saveCurrentList);
 
-    document.getElementById('create-list').addEventListener('click', function () {
-        createNewList();
-    });
+    document.getElementById('create-list').addEventListener('click', createNewList);
 
     loadSavedLists();
+    loadArchivedLists();
     // Load the current list name from localStorage
-    const currentListName = localStorage.getItem('currentListName');
+    const currentListName = localStorage.getItem('currentListName') || 'Default List';
     if (!localStorage.getItem('savedLists')) {
         createNewList('Default List');
     } else {
@@ -84,7 +77,7 @@ function createTaskElement(text, date, completed) {
     const textContainer = document.createElement('div');
     textContainer.className = 'text-container';
 
-    const dateSpan = document.createElement('span'); 
+    const dateSpan = document.createElement('span');
     dateSpan.className = 'date-span';
     dateSpan.innerText = date;
 
@@ -107,33 +100,21 @@ function createTaskElement(text, date, completed) {
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'button-container';
 
-    const completeButton = document.createElement('span');
-    completeButton.innerText = '✅';
-    completeButton.className = 'complete';
-    completeButton.addEventListener('click', function () {
-        leftSection.classList.toggle('completed');
-        textContainer.classList.toggle('completed');
-        taskSpan.classList.toggle('completed');
-        dateSpan.classList.toggle('completed');
+    const completeButton = createButton('✅', 'complete', function () {
+        toggleCompleted(leftSection, textContainer, taskSpan, dateSpan);
         saveTasks();
         saveCurrentList(); // Automatically save the current list
     });
     buttonContainer.appendChild(completeButton);
 
-    const removeButton = document.createElement('span');
-    removeButton.innerText = '❌';
-    removeButton.className = 'remove';
-    removeButton.addEventListener('click', function () {
+    const removeButton = createButton('❌', 'remove', function () {
         li.remove();
         saveTasks();
         saveCurrentList(); // Automatically save the current list
     });
     buttonContainer.appendChild(removeButton);
 
-    const editButton = document.createElement('span');
-    editButton.innerText = '✏️';
-    editButton.className = 'edit';
-    editButton.addEventListener('click', function () {
+    const editButton = createButton('✏️', 'edit', function () {
         taskSpan.contentEditable = true;
         taskSpan.focus();
         taskSpan.classList.add('editing');
@@ -159,13 +140,25 @@ function createTaskElement(text, date, completed) {
 
     // Add event listener to toggle completed class for the entire list item
     leftSection.addEventListener('click', function () {
-        leftSection.classList.toggle('completed');
-        textContainer.classList.toggle('completed');
-        taskSpan.classList.toggle('completed');
-        dateSpan.classList.toggle('completed');
+        toggleCompleted(leftSection, textContainer, taskSpan, dateSpan);
         saveTasks();
         saveCurrentList(); // Automatically save the current list
     });
+}
+
+function createButton(text, className, onClick) {
+    const button = document.createElement('span');
+    button.innerText = text;
+    button.className = className;
+    button.addEventListener('click', onClick);
+    return button;
+}
+
+function toggleCompleted(leftSection, textContainer, taskSpan, dateSpan) {
+    leftSection.classList.toggle('completed');
+    textContainer.classList.toggle('completed');
+    taskSpan.classList.toggle('completed');
+    dateSpan.classList.toggle('completed');
 }
 
 function saveTasks() {
@@ -205,6 +198,13 @@ function loadSavedLists() {
     }
 }
 
+function loadArchivedLists() {
+    const archivedLists = JSON.parse(localStorage.getItem('archivedLists')) || {};
+    for (const listName in archivedLists) {
+        addArchivedListToggle(listName);
+    }
+}
+
 function addListToggle(listName) {
     const listToggles = document.getElementById('list-toggles');
     const li = document.createElement('li');
@@ -219,10 +219,7 @@ function addListToggle(listName) {
     li.appendChild(a);
 
     // Create a delete button for the list
-    const deleteButton = document.createElement('span');
-    deleteButton.innerText = '🗑️';
-    deleteButton.className = 'delete';
-    deleteButton.addEventListener('click', function (e) {
+    const deleteButton = createButton('🗑️', 'delete', function (e) {
         e.stopPropagation(); // Prevent the click event from triggering the list load
         deleteList(listName);
         li.remove();
@@ -230,10 +227,7 @@ function addListToggle(listName) {
     li.appendChild(deleteButton);
 
     // Create an archive button for the list
-    const archiveButton = document.createElement('span');
-    archiveButton.innerText = '📦';
-    archiveButton.className = 'archive';
-    archiveButton.addEventListener('click', function (e) {
+    const archiveButton = createButton('📦', 'archive', function (e) {
         e.stopPropagation(); // Prevent the click event from triggering the list load
         archiveList(listName);
         li.remove();
@@ -257,20 +251,15 @@ function addArchivedListToggle(listName) {
     li.appendChild(a);
 
     // Create a delete button for the archived list
-    const deleteButton = document.createElement('span');
-    deleteButton.innerText = '🗑️';
-    deleteButton.className = 'delete';
-    deleteButton.addEventListener('click', function (e) {
+    const deleteButton = createButton('🗑️', 'delete', function (e) {
         e.stopPropagation(); // Prevent the click event from triggering the list load
         deleteList(listName, true);
         li.remove();
     });
     li.appendChild(deleteButton);
 
-    const revertButton = document.createElement('span');
-    revertButton.innerText = '🔙';
-    revertButton.className = 'revert';
-    revertButton.addEventListener('click', function (e) {
+    // Create a revert button for the archived list
+    const revertButton = createButton('🔙', 'revert', function (e) {
         e.stopPropagation(); // Prevent the click event from triggering the list load
         revertList(listName);
         li.remove();
@@ -303,7 +292,6 @@ function archiveList(listName) {
         addArchivedListToggle(listName);
     }
 }
-
 
 function deleteList(listName, isArchived = false) {
     const savedLists = JSON.parse(localStorage.getItem(isArchived ? 'archivedLists' : 'savedLists')) || {};
@@ -345,16 +333,17 @@ function createNewList(listName = 'New List') {
     saveCurrentList(); // Save the new list
 }
 
-function renameList (oldName, newName) {
+function renameList(oldName, newName) {
     const savedLists = JSON.parse(localStorage.getItem('savedLists')) || {};
     if (savedLists[oldName]) {
-        savedLists[newName]= savedLists[oldName];
+        savedLists[newName] = savedLists[oldName];
         delete savedLists[oldName];
         localStorage.setItem('savedLists', JSON.stringify(savedLists));
         localStorage.setItem('currentListName', newName);
         updateListToggle(oldName, newName);
     }
 }
+
 function updateListToggle(oldName, newName) {
     const listToggles = document.getElementById('list-toggles');
     const links = listToggles.getElementsByTagName('a');
